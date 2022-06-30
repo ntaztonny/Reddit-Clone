@@ -16,6 +16,7 @@ import {
   StarIcon,
   GlobeIcon,
 } from "@heroicons/react/outline";
+import { signIn } from "next-auth/react";
 
 function Header() {
   return (
@@ -56,7 +57,10 @@ function Header() {
       </div>
 
       {/* sign-in & sign-out */}
-      <div className="hidden lg:flex items-center space-x-2 border-gray-200 p-2 cursor-pointer">
+      <div
+        onClick={() => signIn()}
+        className="hidden lg:flex items-center space-x-2 border-gray-200 p-2 cursor-pointer"
+      >
         <div className="relative h-7 w-7 flex-shrink-0 ">
           <Image
             objectFit="contain"
