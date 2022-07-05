@@ -2,7 +2,11 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ["logodownload.org", "cdn-icons-png.flaticon.com"],
+    domains: [
+      "logodownload.org",
+      "cdn-icons-png.flaticon.com",
+      "avatars.dicebear.com",
+    ],
   },
 };
 
