@@ -3,6 +3,10 @@ import { useSession } from "next-auth/react";
 import React, { useState } from "react";
 import Avatar from "./Avatar";
 import { useForm } from "react-hook-form";
+import { useMutation } from "@apollo/client";
+import { ADD_POST, ADD_SUBREDDIT } from "../graphql/mutations";
+import client from "../apollo-client";
+import { GET_SUBREDDIT_BY_TOPIC } from "../graphql/queries";
 
 type FormData = {
   postTitle: string;
@@ -13,6 +17,8 @@ type FormData = {
 
 function PostBox() {
   const { data: session } = useSession();
+  const [addPost, setAddPost] = useMutation(ADD_POST);
+  const [addSubreddit] = useMutation(ADD_SUBREDDIT);
   const {
     register,
     setValue,
@@ -21,8 +27,41 @@ function PostBox() {
     formState: { errors },
   } = useForm<FormData>();
   const [imageBoxOpen, setImageBoxOpen] = useState<boolean>(false);
+
+  const onSubmitform = handleSubmit(async (formData) => {
+    console.log(formData);
+    try {
+      //Query the subreddit topics:
+      const {
+        data: { getSubradditByTopic },
+      } = await client.query({
+        query: GET_SUBREDDIT_BY_TOPIC,
+        variables: {
+          topic: formData.subreddit,
+        },
+      });
+      const subredditExists = getSubradditByTopic.length > 0;
+      if (!subredditExists) {
+        // create subreddit
+        const {
+          data: { insertSubreddit: newSubreddit },
+        } = await addSubreddit({
+          variables: {
+            topic: formData.subreddit,
+          },
+        });
+        console.log("creating post...", formData);
+        const image = formData.postImage || "";
+      } else {
+        // use existing subreddit
+      }
+    } catch (error) {}
+  });
   return (
-    <form className="sticky top-16 z-50 bg-white rounded-md border-gray-300 p-2 ">
+    <form
+      onSubmit={onSubmitform}
+      className="sticky top-16 z-50 bg-white rounded-md border border-gray-300 p-2"
+    >
       <div className="flex items-center space-x-3">
         {/**Avator */}
         <Avatar />
@@ -35,7 +74,12 @@ function PostBox() {
             session ? "Post what's on your mind!" : "sign in to post"
           }
         />
-        <PhotographIcon className={`h-6 text-gray-300 cursor-pointer`} />
+        <PhotographIcon
+          onClick={() => setImageBoxOpen(!imageBoxOpen)}
+          className={`h-6 cursor-pointer text-gray-300 ${
+            imageBoxOpen && "text-blue-300"
+          }`}
+        />
         <LinkIcon className="h-6 text-gray-300" />
       </div>
       {!!watch("postTitle") && (
@@ -55,11 +99,41 @@ function PostBox() {
             <p className="min-w-[90px]">Subreddit</p>
             <input
               className="m-2 flex-1 bg-blue-50 p-2 outline-none"
-              {...register("postBody")}
+              {...register("subreddit", { required: true })}
               type="text"
               placeholder="i.e you could give an example"
             />
           </div>
+          {imageBoxOpen && (
+            <div className="flex items-center px-2">
+              <p className="min-w-[90px]">ImageURL</p>
+              <input
+                className="m-2 flex-1 bg-blue-50 p-2 outline-none"
+                {...register("postImage")}
+                type="text"
+                placeholder="i.e Add an image(optional!)"
+              />
+            </div>
+          )}
+          {/* errors */}
+          {Object.keys(errors).length > 0 && (
+            <div className="space-y-2 p-2 text-red-500">
+              {errors.postTitle?.type === "required" && (
+                <p>- Please enter the post title!</p>
+              )}
+              {errors.subreddit?.type === "required" && (
+                <p>- Please enter a subreddit...</p>
+              )}
+            </div>
+          )}
+          {!!watch("postTitle") && (
+            <button
+              type="submit"
+              className="w-full rounded-full bg-blue-400 p-2 text-white"
+            >
+              Create post
+            </button>
+          )}
         </div>
       )}
     </form>
