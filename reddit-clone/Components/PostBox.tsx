@@ -7,6 +7,7 @@ import { useMutation } from "@apollo/client";
 import { ADD_POST, ADD_SUBREDDIT } from "../graphql/mutations";
 import client from "../apollo-client";
 import { GET_SUBREDDIT_BY_TOPIC } from "../graphql/queries";
+import toast from "react-hot-toast";
 
 type FormData = {
   postTitle: string;
@@ -30,17 +31,18 @@ function PostBox() {
 
   const onSubmitform = handleSubmit(async (formData) => {
     console.log(formData);
+    const notification = toast.loading("creating new post...");
     try {
       //Query the subreddit topics:
       const {
-        data: { getSubradditByTopic },
+        data: { getSubredditByTopic },
       } = await client.query({
         query: GET_SUBREDDIT_BY_TOPIC,
         variables: {
           topic: formData.subreddit,
         },
       });
-      const subredditExists = getSubradditByTopic.length > 0;
+      const subredditExists = getSubredditByTopic.length > 0;
       if (!subredditExists) {
         // create subreddit
         const {
@@ -52,10 +54,44 @@ function PostBox() {
         });
         console.log("creating post...", formData);
         const image = formData.postImage || "";
+        const {
+          data: { insertPost: newPost },
+        } = await addPost({
+          variables: {
+            body: formData.postBody,
+            image: image,
+            subreddit_id: newSubreddit.id,
+            title: formData.postTitle,
+            user: session?.user?.name,
+          },
+        });
+        console.log("added new post", newPost);
       } else {
         // use existing subreddit
+        console.log("using existing subreddit!");
+        // console.log(getSubredditPostByTopic);
+        const image = formData.postImage || "";
+        const {
+          data: { insertPost: newPost },
+        } = await addPost({
+          variables: {
+            body: formData.postBody,
+            image: image,
+            subreddit_id: getSubredditByTopic[0].id,
+            title: formData.postTitle,
+            username: session?.user?.name,
+          },
+        });
       }
-    } catch (error) {}
+      //after adding post, reset the form
+      setValue("postBody", "");
+      setValue("postImage", "");
+      setValue("postTitle", "");
+      setValue("subreddit", "");
+      toast.success("New host created!");
+    } catch (error) {
+      toast.error(" Sorry, something went wrong!!");
+    }
   });
   return (
     <form
